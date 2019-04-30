@@ -17,7 +17,11 @@ module StayInTouch
 
     def self.did_receive_message(message:, bot:)
       puts "Received #{message.text}"
-      from_username = (message.from.username || "").downcase
+      if from_username.nil?
+        bot.api.send_message(chat_id: message.chat.id, text: "It looks like you didn't set a Telegram username yet, please go your Telegram profile and choose a username, and text me again once you did 🤗")
+        return
+      end
+      from_username = message.from.username.downcase
 
       # ANY message we receive, we're gonna remember the mapping of username to Chat ID
       # to be able to text the given person. This is a privacy/spam protection feature, so that
