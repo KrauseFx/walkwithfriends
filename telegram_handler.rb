@@ -134,7 +134,7 @@ module StayInTouch
             chat_id: message.chat.id,
             text: [
               "#{number_of_hosts} people use the bot to schedule calls",
-              "#{number_of_clients} people are in the user's addressbook",
+              "#{number_of_clients} people are in the users' addressbook",
               "#{number_of_open_messages} active message invites are sent out right now",
             ].join("\n")
           )
