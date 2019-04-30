@@ -11,6 +11,7 @@ module StayInTouch
           DateTime :lastCall
           String :owner
           String :telegramUser
+          Integer :numberOfCalls, default: 0
         end
       end
 

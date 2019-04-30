@@ -68,7 +68,15 @@ module StayInTouch
           # now revoke all other messages
           revoke_all_invites(bot: bot, owner: user_to_confirm)
 
-          Database.database[:contacts].where(owner: user_to_confirm, telegramUser: from_username).update(lastCall: Time.now)
+          filtered_set = Database.database[:contacts].where(
+            owner: user_to_confirm, 
+            telegramUser: from_username
+          )
+
+          filtered_set.update(
+            lastCall: Time.now,
+            numberOfCalls: filtered_set.first[:numberOfCalls] + 1
+          )
         when "/contacts"
           to_print = Database.database[:contacts].where(owner: from_username).reverse_order(:lastCall).collect do |row|
             if row[:lastCall]
@@ -86,7 +94,9 @@ module StayInTouch
               formatted_days_ago = "Never"
             end
 
-            "#{emoji} #{formatted_days_ago}: @#{row[:telegramUser]}"
+            number_of_calls_string = "(#{row[:numberOfCalls]} call" + (row[:numberOfCalls] != 1 ? "s" : "") + ")"
+
+            "#{emoji} #{formatted_days_ago}: @#{row[:telegramUser]} #{number_of_calls_string}"
           end
           bot.api.send_message(
             chat_id: message.chat.id,
