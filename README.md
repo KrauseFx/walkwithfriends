@@ -13,6 +13,7 @@ You'll have to setup a few things
 
 ```
 free - available for a call
+stop - mark yourself as unavailable for a call
 newcontact - [name] Add a new contact
 contacts - list all your contacts
 help - print help screen

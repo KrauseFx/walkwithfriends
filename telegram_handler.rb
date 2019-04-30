@@ -32,8 +32,7 @@ module StayInTouch
         when "/start"
           bot.api.send_message(chat_id: message.chat.id, text: "Hey @#{from_username}, thanks for confirming, you'll receive call requests here as soon as the other party is available.\n\nIf you want, you can also use this bot to connect with your friends across the world, just run `/help` to get a list of all available commands.")
         when "/help"
-          bot.api.send_message(chat_id: message.chat.id, text: "TODO")
-          # TODO
+          show_help_screen(bot: bot, chat_id: message.chat.id)
         when "/free"
           Database.database[:contacts].where(owner: from_username).each do |current_contact|
             telegram_id = Database.database[:openChats].where(telegramUser: current_contact[:telegramUser])
@@ -55,6 +54,9 @@ module StayInTouch
               }
             end
           end
+        when "/stop"
+          revoke_all_invites(bot: bot, owner: from_username)
+          bot.api.send_message(chat_id: message.chat.id, text: "Alright, revoked all sent out invites")
         when /\/confirm\_(.*)/
           user_to_confirm = message.text.match(/\/confirm\_(.*)/)[1]
 
@@ -64,15 +66,7 @@ module StayInTouch
           bot.api.send_message(chat_id: telegram_id_owner, text: "@#{message.from.username} just confirmed the call, you two should connect 🤗")
           
           # now revoke all other messages
-          Database.database[:openInvites].where(owner: user_to_confirm).each do |current_message|
-            begin
-              bot.api.delete_message(chat_id: current_message[:chatId], message_id: current_message[:messageId])
-            rescue => ex
-              # We don't want things to get stuck if a message is stuck
-              puts ex
-            end
-          end
-          Database.database[:openInvites].where(owner: user_to_confirm).delete
+          revoke_all_invites(bot: bot, owner: user_to_confirm)
 
           Database.database[:contacts].where(owner: user_to_confirm, telegramUser: message.from.username).update(lastCall: Time.now)
         when "/contacts"
@@ -99,7 +93,32 @@ module StayInTouch
           bot.api.send_message(chat_id: message.chat.id, text: "Please enter `/newcontact [username]`")
         else
           bot.api.send_message(chat_id: message.chat.id, text: "Sorry, I couldn't understand what you're trying to do")
+          show_help_screen(bot: bot, chat_id: message.chat.id)
       end
+    end
+
+    def self.revoke_all_invites(bot:, owner:)
+      Database.database[:openInvites].where(owner: owner).each do |current_message|
+        begin
+          bot.api.delete_message(chat_id: current_message[:chatId], message_id: current_message[:messageId])
+        rescue => ex
+          # We don't want things to get stuck if a message is stuck
+          puts ex
+        end
+      end
+      Database.database[:openInvites].where(owner: owner).delete
+    end
+
+    def self.show_help_screen(bot:, chat_id:)
+      bot.api.send_message(
+        chat_id: chat_id,
+        text: ["The following commands are available:\n\n",
+              "/newcontact [name] Add a new contact (Telegram username)",
+              "/contacts List all contacts you have",
+              "/free Mark yourself as free for a call",
+              "/stop Mark yourself as unavailable",
+              "/help Print this help screen"].join("\n")
+      )
     end
 
     def self.send_invite_text(bot:, chat_id:, from:, to:)
