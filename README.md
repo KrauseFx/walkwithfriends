@@ -17,3 +17,22 @@ newcontact - [name] Add a new contact
 contacts - list all your contacts
 help - print help screen
 ```
+
+## Development
+
+### Dependencies
+
+```
+bundle install
+```
+
+```
+bundle exec ruby worker.rb
+```
+
+### Environment variables
+
+```
+TELEGRAM_TOKEN
+DATABASE_URL
+```
