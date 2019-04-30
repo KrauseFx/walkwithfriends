@@ -8,6 +8,7 @@ module StayInTouch
     def self.listen
       puts "Telegram server running..."
       self.perform_with_bot do |bot|
+        @sending_out_thread ||= {}
         bot.listen do |message|
           self.did_receive_message(message: message, bot: bot)
         end
@@ -34,31 +35,45 @@ module StayInTouch
         when "/help"
           show_help_screen(bot: bot, chat_id: message.chat.id)
         when "/free"
-          Database.database[:contacts].where(owner: from_username).reverse_order(:lastCall).each do |current_contact|
+          to_send_out = Database.database[:contacts].where(owner: from_username).reverse_order(:lastCall).collect do |current_contact|
             telegram_id = Database.database[:openChats].where(telegramUser: current_contact[:telegramUser])
             if telegram_id.count == 0
               send_invite_text(bot: bot, chat_id: message.chat.id, from: from_username, to: current_contact[:telegramUser])
+
+              nil
             else
-              bot.api.send_message(chat_id: message.chat.id, text: "Pinging @#{current_contact[:telegramUser]}")
-
-              to_chat_id = telegram_id.first[:chatId]
-              message_id = bot.api.send_message(
-                chat_id: to_chat_id,
-                text: "Hey #{current_contact[:telegramUser]}\n\n@#{message.from.first_name} is available for a call, please tap /confirm_#{from_username} if you're free to chat now :)"
-              )["result"]["message_id"]
-
-              Database.database[:openInvites] << {
-                owner: from_username,
-                messageId: message_id,
-                chatId: to_chat_id
+              {
+                telegram_user: current_contact[:telegramUser],
+                to_invite_chat_id: telegram_id.first[:chatId]
               }
             end
           end
+
+          @sending_out_thread[from_username] = Thread.new do
+            to_send_out.each do |row|
+              send_call_invite(
+                bot: bot, 
+                author_chat_id: message.chat.id, 
+                to_invite_chat_id: row[:to_invite_chat_id],
+                telegram_user: row[:telegram_user],
+                first_name: message.from.first_name,
+                from_username: from_username
+              )
+              sleep(20)
+            end
+          end
         when "/stop"
+          if @sending_out_thread[from_username]
+            @sending_out_thread[from_username].exit
+          end
           revoke_all_invites(bot: bot, owner: from_username)
           bot.api.send_message(chat_id: message.chat.id, text: "Alright, revoked all sent out invites")
         when /\/confirm\_(.*)/
           user_to_confirm = message.text.match(/\/confirm\_(.*)/)[1]
+
+          if @sending_out_thread[user_to_confirm]
+            @sending_out_thread[user_to_confirm].exit
+          end
 
           bot.api.send_message(chat_id: message.chat.id, text: "Call confirmed, please hit the call button to connect with @#{user_to_confirm}")
 
@@ -159,6 +174,21 @@ module StayInTouch
     def self.send_invite_text(bot:, chat_id:, from:, to:)
       bot.api.send_message(chat_id: chat_id, text: "Looks like @#{to} didn't connect with the bot yet, please forward the following message to them:\n\n\n")
       bot.api.send_message(chat_id: chat_id, text: "@#{from} wants to add you to his call list so you can stay connected, please confirm by tapping the following link: https://t.me/StayInTouchBot and hit `Start`")
+    end
+
+    def self.send_call_invite(bot:, author_chat_id:, to_invite_chat_id:, telegram_user:, first_name:, from_username:)
+      bot.api.send_message(chat_id: author_chat_id, text: "Pinging @#{telegram_user}...")
+
+      message_id = bot.api.send_message(
+        chat_id: to_invite_chat_id,
+        text: "Hey #{telegram_user}\n\n@#{first_name} is available for a call, please tap /confirm_#{from_username} if you're free to chat now :)"
+      )["result"]["message_id"]
+
+      Database.database[:openInvites] << {
+        owner: from_username,
+        messageId: message_id,
+        chatId: to_invite_chat_id
+      }
     end
 
     def self.perform_with_bot
