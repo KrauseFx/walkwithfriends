@@ -125,6 +125,19 @@ module StayInTouch
               text: "No contacts stored yet, please run /newcontact [telegram user] to add one"
             )
           end
+        when "/stats"
+          number_of_hosts = Database.database[:contacts].select_group(:owner).count
+          number_of_clients = Database.database[:contacts].count
+          number_of_open_messages = Database.database[:openInvites].count
+
+          bot.api.send_message(
+            chat_id: message.chat.id,
+            text: [
+              "#{number_of_hosts} people use the bot to schedule calls",
+              "#{number_of_clients} people are in the user's addressbook",
+              "#{number_of_open_messages} active message invites are sent out right now",
+            ].join("\n")
+          )
         when /\/newcontact (.*)/
           username = message.text.match(/\/newcontact (.*)/)[1].gsub("@", "").downcase
           if username.include?(" ")
