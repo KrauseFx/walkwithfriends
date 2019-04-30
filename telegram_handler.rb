@@ -34,7 +34,7 @@ module StayInTouch
         when "/help"
           show_help_screen(bot: bot, chat_id: message.chat.id)
         when "/free"
-          Database.database[:contacts].where(owner: from_username).each do |current_contact|
+          Database.database[:contacts].where(owner: from_username).reverse_order(:lastCall).each do |current_contact|
             telegram_id = Database.database[:openChats].where(telegramUser: current_contact[:telegramUser])
             if telegram_id.count == 0
               send_invite_text(bot: bot, chat_id: message.chat.id, from: from_username, to: current_contact[:telegramUser])
@@ -70,13 +70,30 @@ module StayInTouch
 
           Database.database[:contacts].where(owner: user_to_confirm, telegramUser: message.from.username).update(lastCall: Time.now)
         when "/contacts"
-          Database.database[:contacts].where(owner: from_username).each do |row|
-            formatted_date = row[:lastCall] ? row[:lastCall].strftime("%Y-%m-%d") : "Not yet called"
-            bot.api.send_message(
-              chat_id: message.chat.id,
-              text: "#{row[:telegramUser]}: #{formatted_date}"
-            )
+          to_print = Database.database[:contacts].where(owner: from_username).reverse_order(:lastCall).collect do |row|
+            if row[:lastCall]
+              formatted_date = row[:lastCall].strftime("%Y-%m-%d")
+              days_since_last_call = ((Time.now - row[:lastCall]) / 60.0 / 60.0 / 24.0).round
+
+              emoji = if days_since_last_call > 7
+                "➡"
+              else
+                "✅"
+              end
+
+              formatted_days_ago = " #{days_since_last_call} day" + (formatted_days_ago != 1 ? "s" : "") + " ago"
+            else
+              formatted_date = "Not yet called"
+              emoji = "➡"
+              formatted_days_ago = ""
+            end
+
+            "#{emoji}#{formatted_days_ago}: #{row[:telegramUser]}: #{formatted_date}"
           end
+          bot.api.send_message(
+            chat_id: message.chat.id,
+            text: to_print.join("\n")
+          )
         when /\/newcontact (.*)/
           username = message.text.match(/\/newcontact (.*)/)[1].gsub("@", "")
           Database.database[:contacts] << {
