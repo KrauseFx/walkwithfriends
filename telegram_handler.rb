@@ -143,15 +143,20 @@ module StayInTouch
           if username.include?(" ")
             bot.api.send_message(chat_id: message.chat.id, text: "Username must be the Telegram username, no spaces allowed")
           else
-            Database.database[:contacts] << {
-              lastCall: nil,
-              owner: from_username,
-              telegramUser: username
-            }
-            bot.api.send_message(chat_id: message.chat.id, text: "✅ New contact saved")
+            contacts = Database.database[:contacts].where(owner: from_username, telegramUser: username)
+            if contacts.count == 0
+              Database.database[:contacts] << {
+                lastCall: nil,
+                owner: from_username,
+                telegramUser: username
+              }
+              bot.api.send_message(chat_id: message.chat.id, text: "✅ New contact saved")
 
-            if Database.database[:openChats].where(telegramUser: username).count == 0
-              send_invite_text(bot: bot, chat_id: message.chat.id, from: from_username, to: username)
+              if Database.database[:openChats].where(telegramUser: username).count == 0
+                send_invite_text(bot: bot, chat_id: message.chat.id, from: from_username, to: username)
+              end
+            else
+              bot.api.send_message(chat_id: message.chat.id, text: "⚠️ Looks like you already have @#{username} in your contact list")
             end
           end
         when /\/removecontact (.*)/
