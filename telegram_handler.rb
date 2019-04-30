@@ -129,17 +129,17 @@ module StayInTouch
           username = message.text.match(/\/newcontact (.*)/)[1].gsub("@", "").downcase
           if username.include(" ")
             bot.api.send_message(chat_id: message.chat.id, text: "Username must be the Telegram username, no spaces allowed")
-            break
-          end
-          Database.database[:contacts] << {
-            lastCall: nil,
-            owner: from_username,
-            telegramUser: username
-          }
-          bot.api.send_message(chat_id: message.chat.id, text: "✅ New contact saved")
+          else
+            Database.database[:contacts] << {
+              lastCall: nil,
+              owner: from_username,
+              telegramUser: username
+            }
+            bot.api.send_message(chat_id: message.chat.id, text: "✅ New contact saved")
 
-          if Database.database[:openChats].where(telegramUser: username).count == 0
-            send_invite_text(bot: bot, chat_id: message.chat.id, from: from_username, to: username)
+            if Database.database[:openChats].where(telegramUser: username).count == 0
+              send_invite_text(bot: bot, chat_id: message.chat.id, from: from_username, to: username)
+            end
           end
         when /\/removecontact (.*)/
           username = message.text.match(/\/removecontact (.*)/)[1].gsub("@", "").downcase
