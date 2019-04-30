@@ -6,6 +6,7 @@ require 'json'
 module StayInTouch
   class TelegramHandler
     def self.listen
+      puts "Telegram server running..."
       self.perform_with_bot do |bot|
         bot.listen do |message|
           self.did_receive_message(message: message, bot: bot)
@@ -76,9 +77,10 @@ module StayInTouch
           Database.database[:contacts].where(owner: user_to_confirm, telegramUser: message.from.username).update(lastCall: Time.now)
         when "/contacts"
           Database.database[:contacts].where(owner: from_username).each do |row|
+            formatted_date = row[:lastCall] ? row[:lastCall].strftime("%Y-%m-%d") : "Not yet called"
             bot.api.send_message(
               chat_id: message.chat.id,
-              text: "#{row[:telegramUser]}: #{row[:lastCall].strftime("%Y-%m-%d")}"
+              text: "#{row[:telegramUser]}: #{formatted_date}"
             )
           end
         when /\/newcontact (.*)/
@@ -97,7 +99,6 @@ module StayInTouch
           bot.api.send_message(chat_id: message.chat.id, text: "Please enter `/newcontact [username]`")
         else
           bot.api.send_message(chat_id: message.chat.id, text: "Sorry, I couldn't understand what you're trying to do")
-        end
       end
     end
 
