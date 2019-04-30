@@ -127,6 +127,10 @@ module StayInTouch
           end
         when /\/newcontact (.*)/
           username = message.text.match(/\/newcontact (.*)/)[1].gsub("@", "").downcase
+          if username.include(" ")
+            bot.api.send_message(chat_id: message.chat.id, text: "Username must be the Telegram username, no spaces allowed")
+            break
+          end
           Database.database[:contacts] << {
             lastCall: nil,
             owner: from_username,
