@@ -113,10 +113,18 @@ module StayInTouch
 
             "#{emoji} #{formatted_days_ago}: @#{row[:telegramUser]} #{number_of_calls_string}"
           end
-          bot.api.send_message(
-            chat_id: message.chat.id,
-            text: to_print.join("\n")
-          )
+
+          if to_print.count > 0
+            bot.api.send_message(
+              chat_id: message.chat.id,
+              text: to_print.join("\n")
+            )
+          else
+            bot.api.send_message(
+              chat_id: message.chat.id,
+              text: "No contacts stored yet, please run /newcontact [telegram user] to add one"
+            )
+          end
         when /\/newcontact (.*)/
           username = message.text.match(/\/newcontact (.*)/)[1].gsub("@", "").downcase
           Database.database[:contacts] << {
