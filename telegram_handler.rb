@@ -72,11 +72,13 @@ module StayInTouch
             end
           end
           Database.database[:openInvites].where(owner: user_to_confirm).delete
+
+          Database.database[:contacts].where(owner: user_to_confirm, telegramUser: message.from.username).update(lastCall: Time.now)
         when "/contacts"
           Database.database[:contacts].where(owner: from_username).each do |row|
             bot.api.send_message(
               chat_id: message.chat.id,
-              text: "#{row[:telegramUser]}: #{row[:lastCall]}"
+              text: "#{row[:telegramUser]}: #{row[:lastCall].strftime("%Y-%m-%d")}"
             )
           end
         when /\/newcontact (.*)/
@@ -91,12 +93,17 @@ module StayInTouch
           if Database.database[:openChats].where(telegramUser: username).count == 0
             send_invite_text(bot: bot, chat_id: message.chat.id, from: from_username, to: username)
           end
+        when "/newcontact"
+          bot.api.send_message(chat_id: message.chat.id, text: "Please enter `/newcontact [username]`")
+        else
+          bot.api.send_message(chat_id: message.chat.id, text: "Sorry, I couldn't understand what you're trying to do")
+        end
       end
     end
 
     def self.send_invite_text(bot:, chat_id:, from:, to:)
       bot.api.send_message(chat_id: chat_id, text: "Looks like @#{to} didn't connect with the bot yet, please forward the following message to them:\n\n\n")
-      bot.api.send_message(chat_id: chat_id, text: "@#{from} wants to add you to his call list so you can stay connected, please confirm by tapping the following link: @StayInTouchBot and hit `Start`")
+      bot.api.send_message(chat_id: chat_id, text: "@#{from} wants to add you to his call list so you can stay connected, please confirm by tapping the following link: https://t.me/StayInTouchBot and hit `Start`")
     end
 
     def self.perform_with_bot

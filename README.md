@@ -12,7 +12,8 @@ You'll have to setup a few things
 ## Telegram commands
 
 ```
-/free Available for a call
-/confirm Confirm a call
-/newcontact [name] Add a new contact
+free - available for a call
+newcontact - [name] Add a new contact
+contacts - list all your contacts
+help - print help screen
 ```
