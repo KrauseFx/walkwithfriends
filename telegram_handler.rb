@@ -17,7 +17,7 @@ module StayInTouch
 
     def self.did_receive_message(message:, bot:)
       puts "Received #{message.text}"
-      from_username = message.from.username.downcase
+      from_username = (message.from.username || "").downcase
 
       # ANY message we receive, we're gonna remember the mapping of username to Chat ID
       # to be able to text the given person. This is a privacy/spam protection feature, so that
