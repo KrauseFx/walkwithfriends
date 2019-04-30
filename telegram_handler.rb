@@ -17,7 +17,7 @@ module StayInTouch
 
     def self.did_receive_message(message:, bot:)
       puts "Received #{message.text}"
-      if from_username.nil?
+      if message.from.username.nil?
         bot.api.send_message(chat_id: message.chat.id, text: "It looks like you didn't set a Telegram username yet, please go your Telegram profile and choose a username, and text me again once you did 🤗")
         return
       end
