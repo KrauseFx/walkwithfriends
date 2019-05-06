@@ -217,7 +217,7 @@ module StayInTouch
 
       message_id = bot.api.send_message(
         chat_id: to_invite_chat_id,
-        text: "Hey #{telegram_user}\n\n@#{first_name} is available for a call, please tap /confirm_#{from_username} if you're free to chat now :)"
+        text: "Hey #{telegram_user}\n\n#{first_name} is available for a call, please tap /confirm_#{from_username} if you're free to chat now :)"
       )["result"]["message_id"]
 
       Database.database[:openInvites] << {
