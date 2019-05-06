@@ -39,6 +39,19 @@ module StayInTouch
         when "/help"
           show_help_screen(bot: bot, chat_id: message.chat.id)
         when "/free"
+          bot.api.send_message(
+            chat_id: message.chat.id, 
+            text: [
+              "How many minutes are you available?",
+              "/free_10",
+              "/free_20",
+              "/free_30",
+              "/free_45",
+            ].join("\n\n")
+          )
+        when /\/free\_(\d*)/
+          minutes = message.text.match(/\/free\_(\d*)/)[1]
+
           to_send_out = Database.database[:contacts].where(owner: from_username).reverse_order(:lastCall).collect do |current_contact|
             telegram_id = Database.database[:openChats].where(telegramUser: current_contact[:telegramUser])
             if telegram_id.count == 0
@@ -61,7 +74,8 @@ module StayInTouch
                 to_invite_chat_id: row[:to_invite_chat_id],
                 telegram_user: row[:telegram_user],
                 first_name: message.from.first_name,
-                from_username: from_username
+                from_username: from_username,
+                minutes: minutes
               )
               sleep(20)
             end
@@ -212,12 +226,12 @@ module StayInTouch
       bot.api.send_message(chat_id: chat_id, text: "@#{from} wants to add you to his call list so you can stay connected, please confirm by tapping the following link: https://t.me/StayInTouchBot and hit `Start`")
     end
 
-    def self.send_call_invite(bot:, author_chat_id:, to_invite_chat_id:, telegram_user:, first_name:, from_username:)
+    def self.send_call_invite(bot:, author_chat_id:, to_invite_chat_id:, telegram_user:, first_name:, from_username:, minutes:)
       bot.api.send_message(chat_id: author_chat_id, text: "Pinging @#{telegram_user}...")
 
       message_id = bot.api.send_message(
         chat_id: to_invite_chat_id,
-        text: "Hey #{telegram_user}\n\n#{first_name} is available for a call, please tap /confirm_#{from_username} if you're free to chat now :)"
+        text: "Hey #{telegram_user}\n\n#{first_name} is available for a call for about #{minutes} minutes, please tap /confirm_#{from_username} if you're free to chat now :)"
       )["result"]["message_id"]
 
       Database.database[:openInvites] << {
