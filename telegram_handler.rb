@@ -17,6 +17,7 @@ module StayInTouch
 
     def self.did_receive_message(message:, bot:)
       puts "Received #{message.text}"
+
       if message.from.username.nil?
         bot.api.send_message(chat_id: message.chat.id, text: "It looks like you didn't set a Telegram username yet, please go your Telegram profile and choose a username, and text me again once you did 🤗")
         return
@@ -37,7 +38,7 @@ module StayInTouch
 
       case message.text.downcase
         when "/start"
-          bot.api.send_message(chat_id: message.chat.id, text: "Hey @#{from_username}, thanks for confirming, you'll receive call requests here as soon as the other party is available.\n\nIf you want, you can also use this bot to connect with your friends across the world, just run `/help` to get a list of all available commands.")
+          send_greeting(bot: bot, chat_id: message.chat.id)
         when "/help"
           show_help_screen(bot: bot, chat_id: message.chat.id)
         when "/free"
@@ -258,6 +259,41 @@ module StayInTouch
     def self.send_invite_text(bot:, chat_id:, from:, to:)
       bot.api.send_message(chat_id: chat_id, text: "Looks like @#{to} didn't connect with the bot yet, please forward the following message to them:\n\n\n")
       bot.api.send_message(chat_id: chat_id, text: "@#{from} wants to add you to his call list so you can stay connected, please confirm by tapping the following link: https://t.me/StayInTouchBot and hit `Start`")
+    end
+
+    def self.send_greeting(bot:, chat_id:)
+      messages = [
+        "Staying in touch with close friends requires more effort when everybody lives somewhere else on the planet. Scheduling calls to catch up certainly works, but it requires time-commitment, and time zones make scheduling unnecessarily complicated.",
+        "After living in NYC for a year, I ended up doing the following: If I walk somewhere for about 30 minutes, I'd text 2 friends or family members, asking if they're available for a chat. Often one of them would end up calling me. This way, no prior planning was necessary, things felt more spontaneous and I was able to use my NYC walking time, a city in which I walk 20,000 steps a day on average.",
+        "The problems:",
+        "- If I text a friend Hey X, are you free for a call?, chances are they're at work, asleep, with friends or don't look at their phone. They'd see my message 2 hours later and reply Yep, sure, calling you now. The problem here is that by that time I'm unavailable, as the message is from 2 hours ago.",
+        "- If a friend doesn't know about this setup, they'd think I want to discuss something specific or urgent, however those kinds of calls are just to catch up and stay in touch.",
+        "- Often, either none of my friends were available, or multiple responded, so it was always a tricky balance on how many friends I'd text, with the risk of both of them replying Yep, I'm free now",
+        "- If one friend is never available, you kind of \"forget\" to text them, as you already assume subconsciously that they won't be available",
+        "The solution: A Telegam bot that manages the communication for me and revokes messages as soon as I'm unavailable again."
+      ]
+      messages.each do |message|
+        bot.api.send_message(chat_id: chat_id, text: message)
+        sleep(message.length / 50.0 + 1.0)
+      end
+
+      bot.api.send_photo(
+        chat_id: chat_id, 
+        photo: Faraday::UploadIO.new('./assets/how-does-it-work.png', 'image/png')
+      )
+
+      sleep(5)
+
+      ["screenshot1_framed", "screenshot2_framed", "screenshot3_framed"].each do |file_name|
+        bot.api.send_photo(
+          chat_id: chat_id, 
+          photo: Faraday::UploadIO.new("./assets/#{file_name}.png", 'image/png')
+        )
+      end
+
+      bot.api.send_message(chat_id: chat_id, text: "If you got invited to this bot, you're now successfully set up, nothing else you need to do. You'll automatically get a notification once the other person is available")
+      sleep(2)
+      bot.api.send_message(chat_id: chat_id, text: "If you want to use this bot, just tap on /help to get started")
     end
 
     def self.send_call_invite(bot:, author_chat_id:, to_invite_chat_id:, telegram_user:, first_name:, from_username:, minutes:)
