@@ -33,6 +33,8 @@ module StayInTouch
       end
       Database.database[:openChats].where(telegramUser: from_username).update(chatId: message.chat.id)
 
+      return if (message.text.downcase || "").length == 0
+
       case message.text.downcase
         when "/start"
           bot.api.send_message(chat_id: message.chat.id, text: "Hey @#{from_username}, thanks for confirming, you'll receive call requests here as soon as the other party is available.\n\nIf you want, you can also use this bot to connect with your friends across the world, just run `/help` to get a list of all available commands.")
