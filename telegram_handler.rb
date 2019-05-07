@@ -54,18 +54,28 @@ module StayInTouch
         when /\/free\_(\d*)/
           minutes = message.text.match(/\/free\_(\d*)/)[1]
 
-          to_send_out = Database.database[:contacts].where(owner: from_username).reverse_order(:lastCall).collect do |current_contact|
+          # we do custom handling `NULL` values as forever ago
+          to_send_out = []
+
+          Database.database[:contacts].where(owner: from_username).reverse_order(:lastCall).each do |current_contact|
             telegram_id = Database.database[:openChats].where(telegramUser: current_contact[:telegramUser])
             if telegram_id.count == 0
               send_invite_text(bot: bot, chat_id: message.chat.id, from: from_username, to: current_contact[:telegramUser])
-
-              nil
             else
-              {
+              hash_to_insert = {
                 telegram_user: current_contact[:telegramUser],
                 to_invite_chat_id: telegram_id.first[:chatId]
               }
+              if current_contact[:lastCall]
+                to_send_out.insert(-1, hash_to_insert)
+              else
+                to_send_out.insert(0, hash_to_insert)
+              end
             end
+          end
+
+          if to_send_out.count == 0
+            bot.api.send_message(chat_id: message.chat.id, text: "Looks like you don't have any contacts yet that confirmed the connection with the bot, please make sure to run /newcontact and let your friends connect with the bot")
           end
 
           @sending_out_thread[from_username] = Thread.new do
@@ -113,7 +123,10 @@ module StayInTouch
             numberOfCalls: filtered_set.first[:numberOfCalls] + 1
           )
         when "/contacts"
-          to_print = Database.database[:contacts].where(owner: from_username).reverse_order(:lastCall).collect do |row|
+          # we do custom handling `NULL` values as forever ago
+          to_print = []
+
+          Database.database[:contacts].where(owner: from_username).order(:lastCall).each do |row|
             if row[:lastCall]
               days_since_last_call = ((Time.now - row[:lastCall]) / 60.0 / 60.0 / 24.0).round
 
@@ -130,8 +143,13 @@ module StayInTouch
             end
 
             number_of_calls_string = "(#{row[:numberOfCalls]} call" + (row[:numberOfCalls] != 1 ? "s" : "") + ")"
+            string_to_insert = "#{emoji} #{formatted_days_ago}: @#{row[:telegramUser]} #{number_of_calls_string}"
 
-            "#{emoji} #{formatted_days_ago}: @#{row[:telegramUser]} #{number_of_calls_string}"
+            if row[:lastCall]
+              to_print.insert(-1, string_to_insert)
+            else
+              to_print.insert(0, string_to_insert)
+            end
           end
 
           if to_print.count > 0
