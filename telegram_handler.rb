@@ -52,8 +52,13 @@ module StayInTouch
             ].join("\n\n")
           )
         when /\/free\_(\d*)/
-          minutes = message.text.match(/\/free\_(\d*)/)[1]
+          # First, check if we have an existing thread going, that is sending out invites
+          if @sending_out_thread[from_username]
+            @sending_out_thread[from_username].exit
+          end
+          revoke_all_invites(bot: bot, owner: from_username)
 
+          minutes = message.text.match(/\/free\_(\d*)/)[1]
           # we do custom handling `NULL` values as forever ago
           to_send_out = []
 
