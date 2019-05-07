@@ -91,6 +91,15 @@ module StayInTouch
               )
               sleep(20)
             end
+            bot.api.send_message(
+              chat_id: message.chat.id,
+              text: "Successfully pinged everyone from your contact list... now it's time to wait for someone to confirm"
+            )
+            sleep(5 * 60)
+            bot.api.send_message(
+              chat_id: message.chat.id,
+              text: "Looks like none of your friends is available... You can decide to wait a little longer, or just tap on /stop"
+            )
           end
         when "/stop"
           if @sending_out_thread[from_username]
