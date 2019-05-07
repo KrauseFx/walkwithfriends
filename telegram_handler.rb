@@ -33,7 +33,7 @@ module StayInTouch
       end
       Database.database[:openChats].where(telegramUser: from_username).update(chatId: message.chat.id)
 
-      return if (message.text.downcase || "").length == 0
+      return if (message.text || "").length == 0
 
       case message.text.downcase
         when "/start"
