@@ -113,30 +113,57 @@ module StayInTouch
           end
           revoke_all_invites(bot: bot, owner: from_username)
           bot.api.send_message(chat_id: message.chat.id, text: "Alright, revoked all sent out invites")
+        when /\/track (.*)/
+          user_to_confirm = message.text.match(/\/track (.*)/)[1].gsub("@", "").downcase
+
+          filtered_set = Database.database[:contacts].where(
+            owner: from_username, 
+            telegramUser: user_to_confirm
+          )
+
+          if filtered_set.count > 0
+            filtered_set.update(
+              lastCall: Time.now,
+              numberOfCalls: filtered_set.first[:numberOfCalls] + 1
+            )
+
+            bot.api.send_message(chat_id: message.chat.id, text: "Alright, updated @#{user_to_confirm} last phone call")
+          else
+            bot.api.send_message(chat_id: message.chat.id, text: "Couldn't find @#{user_to_confirm}, please make sure they're in your contact list")
+          end
         when /\/confirm\_(.*)/
-          user_to_confirm = message.text.match(/\/confirm\_(.*)/)[1]
+          user_to_confirm = message.text.match(/\/confirm\_(.*)/)[1].gsub("@", "").downcase
 
           if @sending_out_thread[user_to_confirm]
             @sending_out_thread[user_to_confirm].exit
           end
 
-          bot.api.send_message(chat_id: message.chat.id, text: "Call confirmed, please hit the call button to connect with @#{user_to_confirm}")
+          all_matches = Database.database[:openChats].where(telegramUser: user_to_confirm)
+          if all_matches.count > 0
+            telegram_id_owner = all_matches.first[:chatId]
+            bot.api.send_message(chat_id: telegram_id_owner, text: "@#{from_username} just confirmed the call, you two should connect 🤗")
 
-          telegram_id_owner = Database.database[:openChats].where(telegramUser: user_to_confirm).first[:chatId]
-          bot.api.send_message(chat_id: telegram_id_owner, text: "@#{from_username} just confirmed the call, you two should connect 🤗")
-          
-          # now revoke all other messages
-          revoke_all_invites(bot: bot, owner: user_to_confirm)
+            bot.api.send_message(chat_id: message.chat.id, text: "Call confirmed, please hit the call button to connect with @#{user_to_confirm}")
+            
+            # now revoke all other messages
+            revoke_all_invites(bot: bot, owner: user_to_confirm)
 
-          filtered_set = Database.database[:contacts].where(
-            owner: user_to_confirm, 
-            telegramUser: from_username
-          )
+            filtered_set = Database.database[:contacts].where(
+              owner: user_to_confirm, 
+              telegramUser: from_username
+            )
 
-          filtered_set.update(
-            lastCall: Time.now,
-            numberOfCalls: filtered_set.first[:numberOfCalls] + 1
-          )
+            if filtered_set.count > 0
+              filtered_set.update(
+                lastCall: Time.now,
+                numberOfCalls: filtered_set.first[:numberOfCalls] + 1
+              )
+            else 
+              bot.api.send_message(chat_id: telegram_id_owner, text: "Couldn't find @#{user_to_confirm}, please make sure they're in your contact list")
+            end
+          else
+            bot.api.send_message(chat_id: telegram_id_owner, text: "Couldn't find @#{user_to_confirm}, please make sure they're connected to the bot")
+          end
         when "/contacts"
           # we do custom handling `NULL` values as forever ago
           to_print = []
@@ -249,9 +276,12 @@ module StayInTouch
         chat_id: chat_id,
         text: ["The following commands are available:\n\n",
               "/newcontact [name] Add a new contact (Telegram username)",
+              "/removecontact [name] Remove a contact",
               "/contacts List all contacts you have",
               "/free Mark yourself as free for a call",
               "/stop Mark yourself as unavailable",
+              "/track [name] Manually track a call, e.g. if you hang out IRL",
+              "/stats Show the number of users of this bot",
               "/help Print this help screen"].join("\n")
       )
     end

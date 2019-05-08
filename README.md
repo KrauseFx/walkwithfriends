@@ -63,6 +63,7 @@ stop - mark yourself as unavailable for a call
 newcontact - [name] Add a new contact
 removecontact - [name] Remove an existing contact
 contacts - list all your contacts
+track - manually track a call if you hung out IRL
 stats - print basic stats about the bot
 help - print help screen
 ```
