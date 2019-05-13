@@ -50,7 +50,7 @@ After living in NYC for a year, I ended up doing the following: If I walk somewh
 
 You'll have to setup a few things
 
-- Create a Telegram bot using @BotFather and get the API key, and message ID with you
+- Create a Telegram bot using @BotFather and get the API key
 - Provide those values using `TELEGRAM_TOKEN`
 - Host it on any server, like Heroku
 - Make sure the Heroku worker is enabled
