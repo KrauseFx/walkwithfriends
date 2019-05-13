@@ -184,6 +184,11 @@ module StayInTouch
               formatted_days_ago = "Never"
             end
 
+            if Database.database[:openChats].where(telegramUser: row[:telegramUser]).count == 0
+              formatted_days_ago = "Didn't accept invite"
+              emoji = "🧶"
+            end
+
             number_of_calls_string = "(#{row[:numberOfCalls]} call" + (row[:numberOfCalls] != 1 ? "s" : "") + ")"
             string_to_insert = "#{emoji} #{formatted_days_ago}: @#{row[:telegramUser]} #{number_of_calls_string}"
 
@@ -274,7 +279,7 @@ module StayInTouch
     def self.show_help_screen(bot:, chat_id:)
       bot.api.send_message(
         chat_id: chat_id,
-        text: ["The following commands are available:\n\n",
+        text: ["The following commands are available:\n",
               "/newcontact [name] Add a new contact (Telegram username)",
               "/removecontact [name] Remove a contact",
               "/contacts List all contacts you have",
