@@ -244,6 +244,9 @@ module StayInTouch
               end
             else
               bot.api.send_message(chat_id: message.chat.id, text: "⚠️ Looks like you already have @#{username} in your contact list")
+              if Database.database[:openChats].where(telegramUser: username).count == 0
+                send_invite_text(bot: bot, chat_id: message.chat.id, from: from_username, to: username)
+              end
             end
           end
         when /\/removecontact (.*)/
