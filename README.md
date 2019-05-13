@@ -44,7 +44,7 @@ After living in NYC for a year, I ended up doing the following: If I walk somewh
   </tr>
 </table>
 
-### [Start using t.me/StayInTouchBot](https://t.me/StayInTouchBot)
+### [Start using t.me/WalkWithFriendsBot](https://t.me/WalkWithFriendsBot)
 
 ## How to use it
 
