@@ -6,7 +6,7 @@ module StayInTouch
       @_db ||= Sequel.connect(ENV["DATABASE_URL"])
 
       unless @_db.table_exists?("contacts")
-        @_db.create_table :contacts do
+        @_db.create_table(:contacts) do
           primary_key :id
           DateTime :lastCall
           String :owner
@@ -16,7 +16,7 @@ module StayInTouch
       end
 
       unless @_db.table_exists?("openChats")
-        @_db.create_table :openChats do
+        @_db.create_table(:openChats) do
           primary_key :id
           String :telegramUser
           Integer :chatId
@@ -24,7 +24,7 @@ module StayInTouch
       end
 
       unless @_db.table_exists?("openInvites")
-        @_db.create_table :openInvites do
+        @_db.create_table(:openInvites) do
           primary_key :id
           String :owner
           Integer :messageId
