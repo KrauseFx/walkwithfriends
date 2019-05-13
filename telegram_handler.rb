@@ -288,7 +288,7 @@ module StayInTouch
 
     def self.send_invite_text(bot:, chat_id:, from:, to:)
       bot.api.send_message(chat_id: chat_id, text: "Looks like @#{to} didn't connect with the bot yet, please forward the following message to them:\n\n\n")
-      bot.api.send_message(chat_id: chat_id, text: "@#{from} wants to add you to his call list so you can stay connected, please confirm by tapping the following link: https://t.me/StayInTouchBot and hit `Start`")
+      bot.api.send_message(chat_id: chat_id, text: "Hey @#{to}, I'd like to add you to my call list, please tap on https://t.me/StayInTouchBot and hit `Start` to confirm")
     end
 
     def self.send_greeting(bot:, chat_id:)
