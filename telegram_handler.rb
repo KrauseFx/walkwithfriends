@@ -5,7 +5,13 @@ require 'json'
 
 module StayInTouch
   class TelegramHandler
+    class << self
+      attr_accessor :last_command
+    end
+
     def self.listen
+      self.last_command ||= {}
+
       puts("Telegram server running...")
       self.perform_with_bot do |bot|
         @sending_out_thread ||= {}
@@ -228,26 +234,7 @@ module StayInTouch
         )
       when %r{/newcontact (.*)}
         username = message.text.match(%r{/newcontact (.*)})[1].gsub("@", "").downcase
-        if username.include?(" ")
-          bot.api.send_message(chat_id: message.chat.id, text: "Username must be the Telegram username, no spaces allowed")
-        else
-          contacts = Database.database[:contacts].where(owner: from_username, telegramUser: username)
-
-          if contacts.count == 0
-            Database.database[:contacts] << {
-              lastCall: nil,
-              owner: from_username,
-              telegramUser: username
-            }
-            bot.api.send_message(chat_id: message.chat.id, text: "✅ New contact saved")
-          else
-            bot.api.send_message(chat_id: message.chat.id, text: "⚠️ Looks like you already have @#{username} in your contact list")
-          end
-
-          if Database.database[:openChats].where(telegramUser: username).count == 0
-            send_invite_text(bot: bot, chat_id: message.chat.id, from: from_username, to: username)
-          end
-        end
+        new_contact(username: username, bot: bot, message_chat_id: message.chat.id, from_username: from_username)
       when %r{/removecontact (.*)}
         username = message.text.match(%r{/removecontact (.*)})[1].gsub("@", "").downcase
 
@@ -259,13 +246,58 @@ module StayInTouch
           bot.api.send_message(chat_id: message.chat.id, text: "Could not find contact named @#{username}, please run /contacts for a list of your contacts")
         end
       when "/newcontact"
-        bot.api.send_message(chat_id: message.chat.id, text: "Please enter `/newcontact [username]`")
+        # This happens when the user hits the /newcontact auto-complete button
+        # and Telegram doesn't allow entering the actual value, so we will ask for it instead
+        bot.api.send_message(chat_id: message.chat.id, text: "Please send me the Telegram username of your friend, the username can be found in the user's profile. If they don't have one yet, they'll have to claim their Telegram username, as it's used to identify them for this bot")
+        self.last_command[message.chat.id] = :newcontact
+        Thread.new do
+          sleep(500)
+          # TODO: Terrible workaround to reset state
+          # when the user never sent a username, we reset it again
+          self.last_command[message.chat.id] = nil
+        end
+      when "/removecontact"
+        # This happens when the user hits the /removecontact auto-complete button
+        bot.api.send_message(chat_id: message.chat.id, text: "Please enter `/removecontact username` in one line to remove a user")
       else
-        bot.api.send_message(chat_id: message.chat.id, text: "Sorry, I couldn't understand what you're trying to do")
-        show_help_screen(bot: bot, chat_id: message.chat.id)
+        if self.last_command[message.chat.id] == :newcontact
+          username = message.text.gsub("@", "").downcase
+          if new_contact(username: username, bot: bot, message_chat_id: message.chat.id, from_username: from_username) == true
+            self.last_command[message.chat.id] = nil
+          end
+        else
+          bot.api.send_message(chat_id: message.chat.id, text: "Sorry, I couldn't understand what you're trying to do")
+          show_help_screen(bot: bot, chat_id: message.chat.id)
+        end
       end
     end
     # rubocop:enable Metrics/PerceivedComplexity
+
+    def self.new_contact(username:, bot:, message_chat_id:, from_username:)
+      if username.include?(" ")
+        bot.api.send_message(chat_id: message_chat_id, text: "Username must be the Telegram username, no spaces allowed")
+        return false
+      end
+
+      contacts = Database.database[:contacts].where(owner: from_username, telegramUser: username)
+
+      if contacts.count == 0
+        Database.database[:contacts] << {
+          lastCall: nil,
+          owner: from_username,
+          telegramUser: username
+        }
+        bot.api.send_message(chat_id: message_chat_id, text: "✅ New contact saved")
+      else
+        bot.api.send_message(chat_id: message_chat_id, text: "⚠️ Looks like you already have @#{username} in your contact list")
+      end
+
+      if Database.database[:openChats].where(telegramUser: username).count == 0
+        send_invite_text(bot: bot, chat_id: message_chat_id, from: from_username, to: username)
+      end
+
+      return true
+    end
 
     def self.revoke_all_invites(bot:, owner:)
       Database.database[:openInvites].where(owner: owner).each do |current_message|
