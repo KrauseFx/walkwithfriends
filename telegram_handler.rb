@@ -6,7 +6,7 @@ require 'json'
 module StayInTouch
   class TelegramHandler
     def self.listen
-      puts "Telegram server running..."
+      puts("Telegram server running...")
       self.perform_with_bot do |bot|
         @sending_out_thread ||= {}
         bot.listen do |message|
@@ -15,8 +15,9 @@ module StayInTouch
       end
     end
 
+    # rubocop:disable Metrics/PerceivedComplexity
     def self.did_receive_message(message:, bot:)
-      puts "Received #{message.text}"
+      puts("Received #{message.text}")
 
       if message.from.username.nil?
         bot.api.send_message(chat_id: message.chat.id, text: "It looks like you didn't set a Telegram username yet, please go your Telegram profile and choose a username, and text me again once you did 🤗")
@@ -37,88 +38,120 @@ module StayInTouch
       return if (message.text || "").length == 0
 
       case message.text.downcase
-        when "/start"
-          send_greeting(bot: bot, chat_id: message.chat.id)
-        when "/help"
-          show_help_screen(bot: bot, chat_id: message.chat.id)
-        when "/free"
-          bot.api.send_message(
-            chat_id: message.chat.id, 
-            text: [
-              "How many minutes are you available?",
-              "/free_10",
-              "/free_20",
-              "/free_30",
-              "/free_45",
-            ].join("\n\n")
-          )
-        when /\/free\_(\d*)/
-          # First, check if we have an existing thread going, that is sending out invites
-          if @sending_out_thread[from_username]
-            @sending_out_thread[from_username].exit
-          end
-          revoke_all_invites(bot: bot, owner: from_username)
+      when "/start"
+        send_greeting(bot: bot, chat_id: message.chat.id)
+      when "/help"
+        show_help_screen(bot: bot, chat_id: message.chat.id)
+      when "/free"
+        bot.api.send_message(
+          chat_id: message.chat.id,
+          text: [
+            "How many minutes are you available?",
+            "/free_10",
+            "/free_20",
+            "/free_30",
+            "/free_45"
+          ].join("\n\n")
+        )
+      when %r{/free\_(\d*)}
+        # First, check if we have an existing thread going, that is sending out invites
+        if @sending_out_thread[from_username]
+          @sending_out_thread[from_username].exit
+        end
+        revoke_all_invites(bot: bot, owner: from_username)
 
-          minutes = message.text.match(/\/free\_(\d*)/)[1]
-          # we do custom handling `NULL` values as forever ago
-          to_send_out = []
+        minutes = message.text.match(%r{/free\_(\d*)})[1]
+        # we do custom handling `NULL` values as forever ago
+        to_send_out = []
 
-          Database.database[:contacts].where(owner: from_username).reverse_order(:lastCall).each do |current_contact|
-            telegram_id = Database.database[:openChats].where(telegramUser: current_contact[:telegramUser])
-            if telegram_id.count == 0
-              send_invite_text(bot: bot, chat_id: message.chat.id, from: from_username, to: current_contact[:telegramUser])
+        Database.database[:contacts].where(owner: from_username).reverse_order(:lastCall).each do |current_contact|
+          telegram_id = Database.database[:openChats].where(telegramUser: current_contact[:telegramUser])
+          if telegram_id.count == 0
+            send_invite_text(bot: bot, chat_id: message.chat.id, from: from_username, to: current_contact[:telegramUser])
+          else
+            hash_to_insert = {
+              telegram_user: current_contact[:telegramUser],
+              to_invite_chat_id: telegram_id.first[:chatId]
+            }
+            if current_contact[:lastCall]
+              to_send_out.insert(-1, hash_to_insert)
             else
-              hash_to_insert = {
-                telegram_user: current_contact[:telegramUser],
-                to_invite_chat_id: telegram_id.first[:chatId]
-              }
-              if current_contact[:lastCall]
-                to_send_out.insert(-1, hash_to_insert)
-              else
-                to_send_out.insert(0, hash_to_insert)
-              end
+              to_send_out.insert(0, hash_to_insert)
             end
           end
+        end
 
-          if to_send_out.count == 0
-            bot.api.send_message(chat_id: message.chat.id, text: "Looks like you don't have any contacts yet that confirmed the connection with the bot, please make sure to run /newcontact and let your friends connect with the bot")
-          end
+        if to_send_out.count == 0
+          bot.api.send_message(chat_id: message.chat.id, text: "Looks like you don't have any contacts yet that confirmed the connection with the bot, please make sure to run /newcontact and let your friends connect with the bot")
+        end
 
-          @sending_out_thread[from_username] = Thread.new do
-            to_send_out.each do |row|
-              send_call_invite(
-                bot: bot, 
-                author_chat_id: message.chat.id, 
-                to_invite_chat_id: row[:to_invite_chat_id],
-                telegram_user: row[:telegram_user],
-                first_name: message.from.first_name,
-                from_username: from_username,
-                minutes: minutes
-              )
-              sleep(20)
-            end
-            bot.api.send_message(
-              chat_id: message.chat.id,
-              text: "Successfully pinged everyone from your contact list... now it's time to wait for someone to confirm"
+        @sending_out_thread[from_username] = Thread.new do
+          to_send_out.each do |row|
+            send_call_invite(
+              bot: bot,
+              author_chat_id: message.chat.id,
+              to_invite_chat_id: row[:to_invite_chat_id],
+              telegram_user: row[:telegram_user],
+              first_name: message.from.first_name,
+              from_username: from_username,
+              minutes: minutes
             )
-            sleep(5 * 60)
-            bot.api.send_message(
-              chat_id: message.chat.id,
-              text: "Looks like none of your friends is available... You can decide to wait a little longer, or just tap on /stop"
-            )
+            sleep(20)
           end
-        when "/stop"
-          if @sending_out_thread[from_username]
-            @sending_out_thread[from_username].exit
-          end
-          revoke_all_invites(bot: bot, owner: from_username)
-          bot.api.send_message(chat_id: message.chat.id, text: "Alright, revoked all sent out invites")
-        when /\/track (.*)/
-          user_to_confirm = message.text.match(/\/track (.*)/)[1].gsub("@", "").downcase
+          bot.api.send_message(
+            chat_id: message.chat.id,
+            text: "Successfully pinged everyone from your contact list... now it's time to wait for someone to confirm"
+          )
+          sleep(5 * 60)
+          bot.api.send_message(
+            chat_id: message.chat.id,
+            text: "Looks like none of your friends is available... You can decide to wait a little longer, or just tap on /stop"
+          )
+        end
+      when "/stop"
+        if @sending_out_thread[from_username]
+          @sending_out_thread[from_username].exit
+        end
+        revoke_all_invites(bot: bot, owner: from_username)
+        bot.api.send_message(chat_id: message.chat.id, text: "Alright, revoked all sent out invites")
+      when %r{/track (.*)}
+        user_to_confirm = message.text.match(%r{/track (.*)})[1].gsub("@", "").downcase
+
+        filtered_set = Database.database[:contacts].where(
+          owner: from_username,
+          telegramUser: user_to_confirm
+        )
+
+        if filtered_set.count > 0
+          filtered_set.update(
+            lastCall: Time.now,
+            numberOfCalls: filtered_set.first[:numberOfCalls] + 1
+          )
+
+          bot.api.send_message(chat_id: message.chat.id, text: "Alright, updated @#{user_to_confirm} last phone call")
+        else
+          bot.api.send_message(chat_id: message.chat.id, text: "Couldn't find @#{user_to_confirm}, please make sure they're in your contact list")
+        end
+      when %r{/confirm\_(.*)}
+        user_to_confirm = message.text.match(%r{/confirm\_(.*)})[1].gsub("@", "").downcase
+
+        if @sending_out_thread[user_to_confirm]
+          @sending_out_thread[user_to_confirm].exit
+        end
+
+        all_matches = Database.database[:openChats].where(telegramUser: user_to_confirm)
+        if all_matches.count > 0
+          telegram_id_owner = all_matches.first[:chatId]
+          bot.api.send_message(chat_id: telegram_id_owner, text: "@#{from_username} just confirmed the call, you two should connect 🤗")
+
+          bot.api.send_message(chat_id: message.chat.id, text: "Call confirmed, please hit the call button to connect with @#{user_to_confirm}")
+
+          # now revoke all other messages
+          revoke_all_invites(bot: bot, owner: user_to_confirm)
 
           filtered_set = Database.database[:contacts].where(
-            owner: from_username, 
-            telegramUser: user_to_confirm
+            owner: user_to_confirm,
+            telegramUser: from_username
           )
 
           if filtered_set.count > 0
@@ -126,154 +159,121 @@ module StayInTouch
               lastCall: Time.now,
               numberOfCalls: filtered_set.first[:numberOfCalls] + 1
             )
-
-            bot.api.send_message(chat_id: message.chat.id, text: "Alright, updated @#{user_to_confirm} last phone call")
           else
-            bot.api.send_message(chat_id: message.chat.id, text: "Couldn't find @#{user_to_confirm}, please make sure they're in your contact list")
+            bot.api.send_message(chat_id: telegram_id_owner, text: "Couldn't find @#{user_to_confirm}, please make sure they're in your contact list")
           end
-        when /\/confirm\_(.*)/
-          user_to_confirm = message.text.match(/\/confirm\_(.*)/)[1].gsub("@", "").downcase
+        else
+          bot.api.send_message(chat_id: telegram_id_owner, text: "Couldn't find @#{user_to_confirm}, please make sure they're connected to the bot")
+        end
+      when "/contacts"
+        # we do custom handling `NULL` values as forever ago
+        to_print = []
 
-          if @sending_out_thread[user_to_confirm]
-            @sending_out_thread[user_to_confirm].exit
-          end
+        Database.database[:contacts].where(owner: from_username).order(:lastCall).each do |row|
+          if row[:lastCall]
+            days_since_last_call = ((Time.now - row[:lastCall]) / 60.0 / 60.0 / 24.0).round
 
-          all_matches = Database.database[:openChats].where(telegramUser: user_to_confirm)
-          if all_matches.count > 0
-            telegram_id_owner = all_matches.first[:chatId]
-            bot.api.send_message(chat_id: telegram_id_owner, text: "@#{from_username} just confirmed the call, you two should connect 🤗")
+            emoji = if days_since_last_call > 7
+                      "➡"
+                    else
+                      "✅"
+                    end
 
-            bot.api.send_message(chat_id: message.chat.id, text: "Call confirmed, please hit the call button to connect with @#{user_to_confirm}")
-            
-            # now revoke all other messages
-            revoke_all_invites(bot: bot, owner: user_to_confirm)
-
-            filtered_set = Database.database[:contacts].where(
-              owner: user_to_confirm, 
-              telegramUser: from_username
-            )
-
-            if filtered_set.count > 0
-              filtered_set.update(
-                lastCall: Time.now,
-                numberOfCalls: filtered_set.first[:numberOfCalls] + 1
-              )
-            else 
-              bot.api.send_message(chat_id: telegram_id_owner, text: "Couldn't find @#{user_to_confirm}, please make sure they're in your contact list")
-            end
+            formatted_days_ago = "#{days_since_last_call} day" + (formatted_days_ago != 1 ? "s" : "") + " ago"
           else
-            bot.api.send_message(chat_id: telegram_id_owner, text: "Couldn't find @#{user_to_confirm}, please make sure they're connected to the bot")
-          end
-        when "/contacts"
-          # we do custom handling `NULL` values as forever ago
-          to_print = []
-
-          Database.database[:contacts].where(owner: from_username).order(:lastCall).each do |row|
-            if row[:lastCall]
-              days_since_last_call = ((Time.now - row[:lastCall]) / 60.0 / 60.0 / 24.0).round
-
-              emoji = if days_since_last_call > 7
-                "➡"
-              else
-                "✅"
-              end
-
-              formatted_days_ago = "#{days_since_last_call} day" + (formatted_days_ago != 1 ? "s" : "") + " ago"
-            else
-              emoji = "➡"
-              formatted_days_ago = "Never"
-            end
-
-            if Database.database[:openChats].where(telegramUser: row[:telegramUser]).count == 0
-              formatted_days_ago = "Didn't accept invite"
-              emoji = "🧶"
-            end
-
-            number_of_calls_string = "(#{row[:numberOfCalls]} call" + (row[:numberOfCalls] != 1 ? "s" : "") + ")"
-            string_to_insert = "#{emoji} #{formatted_days_ago}: @#{row[:telegramUser]} #{number_of_calls_string}"
-
-            if row[:lastCall]
-              to_print.insert(-1, string_to_insert)
-            else
-              to_print.insert(0, string_to_insert)
-            end
+            emoji = "➡"
+            formatted_days_ago = "Never"
           end
 
-          if to_print.count > 0
-            bot.api.send_message(
-              chat_id: message.chat.id,
-              text: to_print.join("\n")
-            )
+          if Database.database[:openChats].where(telegramUser: row[:telegramUser]).count == 0
+            formatted_days_ago = "Didn't accept invite"
+            emoji = "🧶"
+          end
+
+          number_of_calls_string = "(#{row[:numberOfCalls]} call" + (row[:numberOfCalls] != 1 ? "s" : "") + ")"
+          string_to_insert = "#{emoji} #{formatted_days_ago}: @#{row[:telegramUser]} #{number_of_calls_string}"
+
+          if row[:lastCall]
+            to_print.insert(-1, string_to_insert)
           else
-            bot.api.send_message(
-              chat_id: message.chat.id,
-              text: "No contacts stored yet, please run /newcontact [telegram user] to add one"
-            )
+            to_print.insert(0, string_to_insert)
           end
-        when "/stats"
-          number_of_hosts = Database.database[:contacts].select_group(:owner).count
-          number_of_clients = Database.database[:contacts].count
-          number_of_open_messages = Database.database[:openInvites].count
-          number_of_connected_calls = Database.database[:contacts].sum(:numberOfCalls)
+        end
 
+        if to_print.count > 0
           bot.api.send_message(
             chat_id: message.chat.id,
-            text: [
-              "#{number_of_hosts} people use the bot to schedule calls",
-              "#{number_of_clients} people are in the users' addressbook",
-              "#{number_of_connected_calls} calls connected with this bot",
-              "#{number_of_open_messages} active message invites are sent out right now",
-            ].join("\n")
+            text: to_print.join("\n")
           )
-        when /\/newcontact (.*)/
-          username = message.text.match(/\/newcontact (.*)/)[1].gsub("@", "").downcase
-          if username.include?(" ")
-            bot.api.send_message(chat_id: message.chat.id, text: "Username must be the Telegram username, no spaces allowed")
-          else
-            contacts = Database.database[:contacts].where(owner: from_username, telegramUser: username)
-            if contacts.count == 0
-              Database.database[:contacts] << {
-                lastCall: nil,
-                owner: from_username,
-                telegramUser: username
-              }
-              bot.api.send_message(chat_id: message.chat.id, text: "✅ New contact saved")
-
-              if Database.database[:openChats].where(telegramUser: username).count == 0
-                send_invite_text(bot: bot, chat_id: message.chat.id, from: from_username, to: username)
-              end
-            else
-              bot.api.send_message(chat_id: message.chat.id, text: "⚠️ Looks like you already have @#{username} in your contact list")
-              if Database.database[:openChats].where(telegramUser: username).count == 0
-                send_invite_text(bot: bot, chat_id: message.chat.id, from: from_username, to: username)
-              end
-            end
-          end
-        when /\/removecontact (.*)/
-          username = message.text.match(/\/removecontact (.*)/)[1].gsub("@", "").downcase
-
-          contacts = Database.database[:contacts].where(owner: from_username, telegramUser: username)
-          if contacts.count == 1
-            contacts.delete
-            bot.api.send_message(chat_id: message.chat.id, text: "Successfully removed @#{username} from your contact list")
-          else
-            bot.api.send_message(chat_id: message.chat.id, text: "Could not find contact named @#{username}, please run /contacts for a list of your contacts")
-          end
-        when "/newcontact"
-          bot.api.send_message(chat_id: message.chat.id, text: "Please enter `/newcontact [username]`")
         else
-          bot.api.send_message(chat_id: message.chat.id, text: "Sorry, I couldn't understand what you're trying to do")
-          show_help_screen(bot: bot, chat_id: message.chat.id)
+          bot.api.send_message(
+            chat_id: message.chat.id,
+            text: "No contacts stored yet, please run /newcontact [telegram user] to add one"
+          )
+        end
+      when "/stats"
+        number_of_hosts = Database.database[:contacts].select_group(:owner).count
+        number_of_clients = Database.database[:contacts].count
+        number_of_open_messages = Database.database[:openInvites].count
+        number_of_connected_calls = Database.database[:contacts].sum(:numberOfCalls)
+
+        bot.api.send_message(
+          chat_id: message.chat.id,
+          text: [
+            "#{number_of_hosts} people use the bot to schedule calls",
+            "#{number_of_clients} people are in the users' addressbook",
+            "#{number_of_connected_calls} calls connected with this bot",
+            "#{number_of_open_messages} active message invites are sent out right now"
+          ].join("\n")
+        )
+      when %r{/newcontact (.*)}
+        username = message.text.match(%r{/newcontact (.*)})[1].gsub("@", "").downcase
+        if username.include?(" ")
+          bot.api.send_message(chat_id: message.chat.id, text: "Username must be the Telegram username, no spaces allowed")
+        else
+          contacts = Database.database[:contacts].where(owner: from_username, telegramUser: username)
+
+          if contacts.count == 0
+            Database.database[:contacts] << {
+              lastCall: nil,
+              owner: from_username,
+              telegramUser: username
+            }
+            bot.api.send_message(chat_id: message.chat.id, text: "✅ New contact saved")
+          else
+            bot.api.send_message(chat_id: message.chat.id, text: "⚠️ Looks like you already have @#{username} in your contact list")
+          end
+
+          if Database.database[:openChats].where(telegramUser: username).count == 0
+            send_invite_text(bot: bot, chat_id: message.chat.id, from: from_username, to: username)
+          end
+        end
+      when %r{/removecontact (.*)}
+        username = message.text.match(%r{/removecontact (.*)})[1].gsub("@", "").downcase
+
+        contacts = Database.database[:contacts].where(owner: from_username, telegramUser: username)
+        if contacts.count == 1
+          contacts.delete
+          bot.api.send_message(chat_id: message.chat.id, text: "Successfully removed @#{username} from your contact list")
+        else
+          bot.api.send_message(chat_id: message.chat.id, text: "Could not find contact named @#{username}, please run /contacts for a list of your contacts")
+        end
+      when "/newcontact"
+        bot.api.send_message(chat_id: message.chat.id, text: "Please enter `/newcontact [username]`")
+      else
+        bot.api.send_message(chat_id: message.chat.id, text: "Sorry, I couldn't understand what you're trying to do")
+        show_help_screen(bot: bot, chat_id: message.chat.id)
       end
     end
+    # rubocop:enable Metrics/PerceivedComplexity
 
     def self.revoke_all_invites(bot:, owner:)
       Database.database[:openInvites].where(owner: owner).each do |current_message|
         begin
           bot.api.delete_message(chat_id: current_message[:chatId], message_id: current_message[:messageId])
-        rescue => ex
+        rescue StandardError => e
           # We don't want things to get stuck if a message is stuck
-          puts ex
+          puts(e)
         end
       end
       Database.database[:openInvites].where(owner: owner).delete
@@ -283,14 +283,14 @@ module StayInTouch
       bot.api.send_message(
         chat_id: chat_id,
         text: ["The following commands are available:\n",
-              "/newcontact [name] Add a new contact (Telegram username)",
-              "/removecontact [name] Remove a contact",
-              "/contacts List all contacts you have",
-              "/free Mark yourself as free for a call",
-              "/stop Mark yourself as unavailable",
-              "/track [name] Manually track a call, e.g. if you hang out IRL",
-              "/stats Show the number of users of this bot",
-              "/help Print this help screen"].join("\n")
+               "/newcontact [name] Add a new contact (Telegram username)",
+               "/removecontact [name] Remove a contact",
+               "/contacts List all contacts you have",
+               "/free Mark yourself as free for a call",
+               "/stop Mark yourself as unavailable",
+               "/track [name] Manually track a call, e.g. if you hang out IRL",
+               "/stats Show the number of users of this bot",
+               "/help Print this help screen"].join("\n")
       )
     end
 
@@ -302,7 +302,8 @@ module StayInTouch
     def self.send_greeting(bot:, chat_id:)
       messages = [
         "Staying in touch with close friends requires more effort when everybody lives somewhere else on the planet. Scheduling calls to catch up certainly works, but it requires time-commitment, and time zones make scheduling unnecessarily complicated.",
-        "After living in NYC for a year, I ended up doing the following: If I walk somewhere for about 30 minutes, I'd text 2 friends or family members, asking if they're available for a chat. Often one of them would end up calling me. This way, no prior planning was necessary, things felt more spontaneous and I was able to use my NYC walking time, a city in which I walk 20,000 steps a day on average.",
+        "After living in NYC for a year, I ended up doing the following: If I walk somewhere for about 30 minutes, I'd text 2 friends or family members, asking if they're available for a chat. Often one of them would end up calling me. This way, no prior " \
+          "planning was necessary, things felt more spontaneous and I was able to use my NYC walking time, a city in which I walk 20,000 steps a day on average.",
         "The problems:",
         "- If I text a friend Hey X, are you free for a call?, chances are they're at work, asleep, with friends or don't look at their phone. They'd see my message 2 hours later and reply Yep, sure, calling you now. The problem here is that by that time I'm unavailable, as the message is from 2 hours ago.",
         "- If a friend doesn't know about this setup, they'd think I want to discuss something specific or urgent, however those kinds of calls are just to catch up and stay in touch.",
@@ -316,7 +317,7 @@ module StayInTouch
       end
 
       bot.api.send_photo(
-        chat_id: chat_id, 
+        chat_id: chat_id,
         photo: Faraday::UploadIO.new('./assets/how-does-it-work.png', 'image/png')
       )
 
@@ -324,7 +325,7 @@ module StayInTouch
 
       ["screenshot1_framed", "screenshot2_framed", "screenshot3_framed"].each do |file_name|
         bot.api.send_photo(
-          chat_id: chat_id, 
+          chat_id: chat_id,
           photo: Faraday::UploadIO.new("./assets/#{file_name}.png", 'image/png')
         )
       end
@@ -351,16 +352,17 @@ module StayInTouch
 
     def self.perform_with_bot
       # https://github.com/atipugin/telegram-bot-ruby
-      yield self.client
-    rescue => ex
-      puts "error sending the telegram notification"
-      puts ex
-      puts ex.backtrace
+      yield(self.client)
+    rescue StandardError => e
+      puts("error sending the telegram notification")
+      puts(e)
+      puts(e.backtrace)
     end
 
     def self.client
       return @client if @client
       raise "No Telegram token provided on `TELEGRAM_TOKEN`" if token.to_s.length == 0
+
       @client = ::Telegram::Bot::Client.new(token)
     end
 
