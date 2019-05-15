@@ -120,6 +120,22 @@ module StayInTouch
         end
         revoke_all_invites(bot: bot, owner: from_username)
         bot.api.send_message(chat_id: message.chat.id, text: "Alright, revoked all sent out invites")
+      when %r{/revoke\_(.*)}
+        username = message.text.match(%r{/revoke\_(.*)})[1].gsub("@", "").downcase
+        matching_chats = Database.database[:openChats].where(telegramUser: username)
+        if matching_chats.count == 0
+          bot.api.send_message(chat_id: message.chat.id, text: "Could not find @#{username}")
+        else
+          chat_id = matching_chats.first[:chatId]
+
+          applied_messages = Database.database[:openInvites].where(owner: from_username, chatId: chat_id)
+          if applied_messages.count > 0
+            bot.api.delete_message(chat_id: applied_messages.first[:chatId], message_id: applied_messages.first[:messageId])
+            applied_messages.delete
+          else
+            bot.api.send_message(chat_id: message.chat.id, text: "@#{username} is already revoked")
+          end
+        end
       when %r{/track (.*)}
         user_to_confirm = message.text.match(%r{/track (.*)})[1].gsub("@", "").downcase
 
@@ -347,8 +363,8 @@ module StayInTouch
     end
 
     def self.send_invite_text(bot:, chat_id:, from:, to:)
-      bot.api.send_message(chat_id: chat_id, text: "Looks like @#{to} didn't connect with the bot yet, please forward the following message to them:\n\n\n")
-      bot.api.send_message(chat_id: chat_id, text: "Hey @#{to}, I'd like to add you to my call list, please tap on https://t.me/WalkWithFriendsBot and hit `Start` to confirm")
+      # bot.api.send_message(chat_id: chat_id, text: "Looks like @#{to} didn't connect with the bot yet, please forward the following message to them:\n\n\n")
+      # bot.api.send_message(chat_id: chat_id, text: "Hey @#{to}, I'd like to add you to my call list, please tap on https://t.me/WalkWithFriendsBot and hit `Start` to confirm")
     end
 
     def self.send_greeting(bot:, chat_id:)
@@ -388,7 +404,7 @@ module StayInTouch
     end
 
     def self.send_call_invite(bot:, author_chat_id:, to_invite_chat_id:, telegram_user:, first_name:, from_username:, minutes:)
-      bot.api.send_message(chat_id: author_chat_id, text: "Pinging @#{telegram_user}...")
+      bot.api.send_message(chat_id: author_chat_id, text: "Pinging @#{telegram_user}... (/revoke_#{telegram_user} to skip)")
 
       message_id = bot.api.send_message(
         chat_id: to_invite_chat_id,
