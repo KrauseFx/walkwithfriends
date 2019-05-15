@@ -58,7 +58,7 @@ A Telegam bot that manages the communication for me and revokes messages as soon
   </a>
 </h3>
 
-Website generated using [markdown-to-html-github-style.com](http://markdown-to-html-github-style.com/).
+Website generated using [markdown-to-html-github-style.com](https://markdown-to-html-github-style.com/).
 
 ## Development
 

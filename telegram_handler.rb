@@ -67,23 +67,17 @@ module StayInTouch
         revoke_all_invites(bot: bot, owner: from_username)
 
         minutes = message.text.match(%r{/free\_(\d*)})[1]
-        # we do custom handling `NULL` values as forever ago
         to_send_out = []
 
-        Database.database[:contacts].where(owner: from_username).reverse_order(:lastCall).each do |current_contact|
+        sorted_contacts(from_username: from_username) do |current_contact|
           telegram_id = Database.database[:openChats].where(telegramUser: current_contact[:telegramUser])
           if telegram_id.count == 0
             send_invite_text(bot: bot, chat_id: message.chat.id, from: from_username, to: current_contact[:telegramUser])
           else
-            hash_to_insert = {
+            to_send_out << {
               telegram_user: current_contact[:telegramUser],
               to_invite_chat_id: telegram_id.first[:chatId]
             }
-            if current_contact[:lastCall]
-              to_send_out.insert(-1, hash_to_insert)
-            else
-              to_send_out.insert(0, hash_to_insert)
-            end
           end
         end
 
@@ -175,7 +169,7 @@ module StayInTouch
         # we do custom handling `NULL` values as forever ago
         to_print = []
 
-        Database.database[:contacts].where(owner: from_username).order(:lastCall).each do |row|
+        sorted_contacts(from_username: from_username) do |row|
           if row[:lastCall]
             days_since_last_call = ((Time.now - row[:lastCall]) / 60.0 / 60.0 / 24.0).round
 
@@ -272,6 +266,26 @@ module StayInTouch
       end
     end
     # rubocop:enable Metrics/PerceivedComplexity
+
+    # either provide a block or use the return value
+    def self.sorted_contacts(from_username:)
+      # we do custom handling `NULL` values as forever ago
+      sorted_list = []
+
+      Database.database[:contacts].where(owner: from_username).reverse_order(:lastCall).each do |row|
+        if row[:lastCall]
+          sorted_list.insert(-1, row)
+        else
+          sorted_list.insert(0, row)
+        end
+      end
+
+      sorted_list.each do |row|
+        yield(row)
+      end
+
+      return sorted_list
+    end
 
     def self.new_contact(username:, bot:, message_chat_id:, from_username:)
       if username.include?(" ")
