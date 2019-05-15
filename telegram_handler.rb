@@ -70,6 +70,11 @@ module StayInTouch
         to_send_out = []
 
         sorted_contacts(from_username: from_username) do |current_contact|
+          if current_contact[:lastCall]
+            days_since_last_call = ((Time.now - current_contact[:lastCall]) / 60.0 / 60.0 / 24.0).round
+            next if days_since_last_call < 2 # we just talked with them
+          end
+
           telegram_id = Database.database[:openChats].where(telegramUser: current_contact[:telegramUser])
           if telegram_id.count == 0
             send_invite_text(bot: bot, chat_id: message.chat.id, from: from_username, to: current_contact[:telegramUser])
@@ -96,7 +101,8 @@ module StayInTouch
               from_username: from_username,
               minutes: minutes
             )
-            sleep(20)
+            puts "sending to #{row[:telegram_user]}"
+            sleep(10)
           end
           bot.api.send_message(
             chat_id: message.chat.id,
@@ -272,7 +278,7 @@ module StayInTouch
       # we do custom handling `NULL` values as forever ago
       sorted_list = []
 
-      Database.database[:contacts].where(owner: from_username).reverse_order(:lastCall).each do |row|
+      Database.database[:contacts].where(owner: from_username).order(:lastCall).each do |row|
         if row[:lastCall]
           sorted_list.insert(-1, row)
         else
