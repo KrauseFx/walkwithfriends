@@ -16,7 +16,12 @@ module StayInTouch
       self.perform_with_bot do |bot|
         @sending_out_thread ||= {}
         bot.listen do |message|
-          self.did_receive_message(message: message, bot: bot)
+          begin
+            self.did_receive_message(message: message, bot: bot)
+          rescue => ex
+            # otherwise every crash causes the whole server to go down
+            puts "#{ex.message}\n#{ex.backtrace.join('\n')}"
+          end
         end
       end
     end
