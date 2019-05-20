@@ -137,6 +137,7 @@ module StayInTouch
           if applied_messages.count > 0
             bot.api.delete_message(chat_id: applied_messages.first[:chatId], message_id: applied_messages.first[:messageId])
             applied_messages.delete
+            bot.api.send_message(chat_id: message.chat.id, text: "Successfully revoked invite for @#{username}")
           else
             bot.api.send_message(chat_id: message.chat.id, text: "@#{username} is already revoked")
           end
