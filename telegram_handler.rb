@@ -177,6 +177,7 @@ module StayInTouch
           # now revoke all other messages
           revoke_all_invites(bot: bot, owner: user_to_confirm)
 
+          # Update `lastCall` and `numberOfCalls` for the original user
           filtered_set = Database.database[:contacts].where(
             owner: user_to_confirm,
             telegramUser: from_username
@@ -190,6 +191,19 @@ module StayInTouch
           else
             bot.api.send_message(chat_id: telegram_id_owner, text: "Couldn't find @#{user_to_confirm}, please make sure they're in your contact list")
           end
+
+          # If both users use the bot, we have to update the entry for both relationships
+          filtered_set = Database.database[:contacts].where(
+            owner: from_username,
+            telegramUser: user_to_confirm
+          )
+          if filtered_set.count > 0
+            filtered_set.update(
+              lastCall: Time.now,
+              numberOfCalls: filtered_set.first[:numberOfCalls] + 1
+            )
+          end
+          # No error message needed on `else`
         else
           bot.api.send_message(chat_id: telegram_id_owner, text: "Couldn't find @#{user_to_confirm}, please make sure they're connected to the bot")
         end
