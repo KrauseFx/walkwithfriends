@@ -22,9 +22,9 @@ module StayInTouch
             elsif message.kind_of?(Telegram::Bot::Types::CallbackQuery)
               self.did_receive_callback_query(message: message, bot: bot)
             end
-          rescue => ex
+          rescue StandardError => e
             # otherwise every crash causes the whole server to go down
-            puts "#{ex.message}\n" + ex.backtrace.join("\n")
+            puts("#{e.message}\n" + e.backtrace.join("\n"))
           end
         end
       end
@@ -32,26 +32,95 @@ module StayInTouch
 
     def self.did_receive_callback_query(message:, bot:)
       # Here you can handle your callbacks from inline buttons
-      # currently used just for the `/track` command
-
+      # currently used for the `/track` command and the number of minutes for a call
       from_username = message.from.username.downcase
 
-      user_to_confirm = message.data.split("-")[1..-1].join("-").downcase
+      action = message.data.split("-")[0]
 
-      filtered_set = Database.database[:contacts].where(
-        owner: from_username,
-        telegramUser: user_to_confirm
-      )
+      if action == "track"
+        user_to_confirm = message.data.split("-")[1..-1].join("-").downcase
 
-      if filtered_set.count > 0
-        filtered_set.update(
-          lastCall: Time.now,
-          numberOfCalls: filtered_set.first[:numberOfCalls] + 1
+        filtered_set = Database.database[:contacts].where(
+          owner: from_username,
+          telegramUser: user_to_confirm
         )
 
-        bot.api.send_message(chat_id: message.from.id, text: "Alright, updated @#{user_to_confirm} last phone call")
+        if filtered_set.count > 0
+          filtered_set.update(
+            lastCall: Time.now,
+            numberOfCalls: filtered_set.first[:numberOfCalls] + 1
+          )
+
+          bot.api.send_message(chat_id: message.from.id, text: "Alright, updated @#{user_to_confirm} last phone call")
+        else
+          bot.api.send_message(chat_id: message.from.id, text: "Couldn't find @#{user_to_confirm}, please make sure they're in your contact list")
+        end
+      elsif action == "callduration"
+        # First, check if we have an existing thread going, that is sending out invites
+        if @sending_out_thread[from_username]
+          @sending_out_thread[from_username].exit
+        end
+        revoke_all_invites(bot: bot, owner: from_username)
+
+        minutes = message.data.split("-").last.to_i
+        to_send_out = []
+        skipped_contacts = []
+
+        sorted_contacts(from_username: from_username) do |current_contact|
+          if current_contact[:lastCall]
+            days_since_last_call = ((Time.now - current_contact[:lastCall]) / 60.0 / 60.0 / 24.0).round
+            if days_since_last_call < 2
+              # we just talked with them
+              skipped_contacts << current_contact[:telegramUser]
+              next
+            end
+          end
+
+          telegram_id = Database.database[:openChats].where(telegramUser: current_contact[:telegramUser])
+          if telegram_id.count == 0
+            send_invite_text(bot: bot, chat_id: message.from.id, from: from_username, to: current_contact[:telegramUser])
+          else
+            to_send_out << {
+              telegram_user: current_contact[:telegramUser],
+              to_invite_chat_id: telegram_id.first[:chatId]
+            }
+          end
+        end
+
+        if skipped_contacts.count > 0
+          bot.api.send_message(chat_id: message.from.id, text: "Skipped sending out messages to " + skipped_contacts.join(",") + " as talked with them within the last 24h")
+        end
+
+        if to_send_out.count == 0
+          bot.api.send_message(chat_id: message.from.id, text: "Looks like you don't have any contacts yet that confirmed the connection with the bot, please make sure to run /newcontact and let your friends connect with the bot")
+        end
+
+        @sending_out_thread[from_username] = Thread.new do
+          to_send_out.each do |row|
+            send_call_invite(
+              bot: bot,
+              author_chat_id: message.from.id,
+              to_invite_chat_id: row[:to_invite_chat_id],
+              telegram_user: row[:telegram_user],
+              first_name: message.from.first_name,
+              from_username: from_username,
+              minutes: minutes
+            )
+            puts "sending to #{row[:telegram_user]}"
+            sleep(10)
+          end
+          bot.api.send_message(
+            chat_id: message.from.id,
+            text: "Successfully pinged everyone from your contact list... now it's time to wait for someone to confirm"
+          )
+          sleep(5 * 60)
+          bot.api.send_message(
+            chat_id: message.from.id,
+            text: "Looks like none of your friends is available... You can decide to wait a little longer, or just tap on /stop"
+          )
+        end
       else
-        bot.api.send_message(chat_id: message.from.id, text: "Couldn't find @#{user_to_confirm}, please make sure they're in your contact list")
+        puts("Unknown action '#{action}'")
       end
     end
 
@@ -83,80 +152,14 @@ module StayInTouch
       when "/help"
         show_help_screen(bot: bot, chat_id: message.chat.id)
       when "/free"
-        bot.api.send_message(
-          chat_id: message.chat.id,
-          text: [
-            "How many minutes are you available?",
-            "/free_10",
-            "/free_20",
-            "/free_30",
-            "/free_45"
-          ].join("\n\n")
-        )
-      when %r{/free\_(\d*)}
-        # First, check if we have an existing thread going, that is sending out invites
-        if @sending_out_thread[from_username]
-          @sending_out_thread[from_username].exit
-        end
-        revoke_all_invites(bot: bot, owner: from_username)
-
-        minutes = message.text.match(%r{/free\_(\d*)})[1]
-        to_send_out = []
-        skipped_contacts = []
-
-        sorted_contacts(from_username: from_username) do |current_contact|
-          if current_contact[:lastCall]
-            days_since_last_call = ((Time.now - current_contact[:lastCall]) / 60.0 / 60.0 / 24.0).round
-            if days_since_last_call < 2
-              # we just talked with them
-              skipped_contacts << current_contact[:telegramUser]
-              next
-            end
-          end
-
-          telegram_id = Database.database[:openChats].where(telegramUser: current_contact[:telegramUser])
-          if telegram_id.count == 0
-            send_invite_text(bot: bot, chat_id: message.chat.id, from: from_username, to: current_contact[:telegramUser])
-          else
-            to_send_out << {
-              telegram_user: current_contact[:telegramUser],
-              to_invite_chat_id: telegram_id.first[:chatId]
-            }
-          end
-        end
-
-        if skipped_contacts.count > 0
-          bot.api.send_message(chat_id: message.chat.id, text: "Skipped sending out messages to " + skipped_contacts.join(",") + " as talked with them within the last 24h")
-        end
-
-        if to_send_out.count == 0
-          bot.api.send_message(chat_id: message.chat.id, text: "Looks like you don't have any contacts yet that confirmed the connection with the bot, please make sure to run /newcontact and let your friends connect with the bot")
-        end
-
-        @sending_out_thread[from_username] = Thread.new do
-          to_send_out.each do |row|
-            send_call_invite(
-              bot: bot,
-              author_chat_id: message.chat.id,
-              to_invite_chat_id: row[:to_invite_chat_id],
-              telegram_user: row[:telegram_user],
-              first_name: message.from.first_name,
-              from_username: from_username,
-              minutes: minutes
-            )
-            puts "sending to #{row[:telegram_user]}"
-            sleep(10)
-          end
-          bot.api.send_message(
-            chat_id: message.chat.id,
-            text: "Successfully pinged everyone from your contact list... now it's time to wait for someone to confirm"
-          )
-          sleep(5 * 60)
-          bot.api.send_message(
-            chat_id: message.chat.id,
-            text: "Looks like none of your friends is available... You can decide to wait a little longer, or just tap on /stop"
+        durations = [10, 20, 30, 45].collect do |duration|
+          Telegram::Bot::Types::InlineKeyboardButton.new(
+            text: "#{duration} minutes",
+            callback_data: "callduration-#{duration}"
           )
         end
+        markup = Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: durations)
+        bot.api.send_message(chat_id: message.chat.id, text: "Roughly, how many minutes are you available?", reply_markup: markup)
       when "/stop"
         if @sending_out_thread[from_username]
           @sending_out_thread[from_username].exit
@@ -251,7 +254,7 @@ module StayInTouch
                       "✅"
                     end
 
-            formatted_days_ago = "#{days_since_last_call} day" + (formatted_days_ago != 1 ? "s" : "") + " ago"
+            formatted_days_ago = "#{days_since_last_call} day" + (days_since_last_call != 1 ? "s" : "") + " ago"
           else
             emoji = "➡"
             formatted_days_ago = "Never"
