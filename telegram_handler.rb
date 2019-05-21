@@ -88,7 +88,7 @@ module StayInTouch
         end
 
         if skipped_contacts.count > 0
-          bot.api.send_message(chat_id: message.from.id, text: "Skipped sending out messages to " + skipped_contacts.join(",") + " as talked with them within the last 24h")
+          bot.api.send_message(chat_id: message.from.id, text: "Skipped sending out messages to " + skipped_contacts.join(", ") + " as talked with them within the last 24h")
         end
 
         if to_send_out.count == 0
@@ -255,6 +255,7 @@ module StayInTouch
                     end
 
             formatted_days_ago = "#{days_since_last_call} day" + (days_since_last_call != 1 ? "s" : "") + " ago"
+            formatted_days_ago = "Today" if days_since_last_call == 0
           else
             emoji = "➡"
             formatted_days_ago = "Never"
@@ -461,7 +462,7 @@ module StayInTouch
 
       message_id = bot.api.send_message(
         chat_id: to_invite_chat_id,
-        text: "Hey #{telegram_user}\n\n#{first_name} is available for a call for about #{minutes} minutes, please tap /confirm_#{from_username} if you're free to chat now :)"
+        text: "Hey #{telegram_user}\n\n@#{from_username} is available for a call for about #{minutes} minutes, please tap /confirm_#{from_username} if you're free to chat now :)"
       )["result"]["message_id"]
 
       Database.database[:openInvites] << {
