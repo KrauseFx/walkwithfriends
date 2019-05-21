@@ -17,12 +17,41 @@ module StayInTouch
         @sending_out_thread ||= {}
         bot.listen do |message|
           begin
-            self.did_receive_message(message: message, bot: bot)
+            if message.kind_of?(Telegram::Bot::Types::Message)
+              self.did_receive_message(message: message, bot: bot)
+            elsif message.kind_of?(Telegram::Bot::Types::CallbackQuery)
+              self.did_receive_callback_query(message: message, bot: bot)
+            end
           rescue => ex
             # otherwise every crash causes the whole server to go down
-            puts "#{ex.message}\n#{ex.backtrace.join('\n')}"
+            puts "#{ex.message}\n" + ex.backtrace.join("\n")
           end
         end
+      end
+    end
+
+    def self.did_receive_callback_query(message:, bot:)
+      # Here you can handle your callbacks from inline buttons
+      # currently used just for the `/track` command
+
+      from_username = message.from.username.downcase
+
+      user_to_confirm = message.data.split("-")[1..-1].join("-").downcase
+
+      filtered_set = Database.database[:contacts].where(
+        owner: from_username,
+        telegramUser: user_to_confirm
+      )
+
+      if filtered_set.count > 0
+        filtered_set.update(
+          lastCall: Time.now,
+          numberOfCalls: filtered_set.first[:numberOfCalls] + 1
+        )
+
+        bot.api.send_message(chat_id: message.from.id, text: "Alright, updated @#{user_to_confirm} last phone call")
+      else
+        bot.api.send_message(chat_id: message.from.id, text: "Couldn't find @#{user_to_confirm}, please make sure they're in your contact list")
       end
     end
 
@@ -151,24 +180,16 @@ module StayInTouch
             bot.api.send_message(chat_id: message.chat.id, text: "@#{username} is already revoked")
           end
         end
-      when %r{/track (.*)}
-        user_to_confirm = message.text.match(%r{/track (.*)})[1].gsub("@", "").downcase
-
-        filtered_set = Database.database[:contacts].where(
-          owner: from_username,
-          telegramUser: user_to_confirm
-        )
-
-        if filtered_set.count > 0
-          filtered_set.update(
-            lastCall: Time.now,
-            numberOfCalls: filtered_set.first[:numberOfCalls] + 1
+      when "/track"
+        contact_buttons = []
+        sorted_contacts(from_username: from_username) do |contact|
+          contact_buttons << Telegram::Bot::Types::InlineKeyboardButton.new(
+            text: contact[:telegramUser],
+            callback_data: "track-#{contact[:telegramUser]}"
           )
-
-          bot.api.send_message(chat_id: message.chat.id, text: "Alright, updated @#{user_to_confirm} last phone call")
-        else
-          bot.api.send_message(chat_id: message.chat.id, text: "Couldn't find @#{user_to_confirm}, please make sure they're in your contact list")
         end
+        markup = Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: contact_buttons)
+        bot.api.send_message(chat_id: message.chat.id, text: "Who did you talk with?", reply_markup: markup)
       when %r{/confirm\_(.*)}
         user_to_confirm = message.text.match(%r{/confirm\_(.*)})[1].gsub("@", "").downcase
 

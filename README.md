@@ -82,7 +82,7 @@ newcontact - [name] Add a new contact
 removecontact - [name] Remove an existing contact
 contacts - list all your contacts
 track - manually track a call if you hung out IRL
-stats - print basic stats about the bot
+stats - print basic stats about this bot
 help - print help screen
 ```
 
