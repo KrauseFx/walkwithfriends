@@ -148,7 +148,9 @@ module StayInTouch
 
       case message.text.downcase
       when "/start"
-        send_greeting(bot: bot, chat_id: message.chat.id)
+        Thread.new do
+          send_greeting(bot: bot, chat_id: message.chat.id)
+        end
       when "/help"
         show_help_screen(bot: bot, chat_id: message.chat.id)
       when "/free"
