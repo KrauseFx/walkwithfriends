@@ -62,43 +62,8 @@ A Telegam bot that manages the communication and revokes messages as soon as you
   </a>
 </h3>
 
+<p style="text-align: center">
+  <iframe width="300" height="580" src="https://www.youtube.com/embed/vanxPbuKTQQ" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+</p>
+
 Website generated using [markdown-to-html-github-style.com](https://markdown-to-html-github-style.com/).
-
-## Development
-
-You'll have to setup a few things
-
-- Create a Telegram bot using @BotFather and get the API key
-- Provide those values using `TELEGRAM_TOKEN`
-- Host it on any server, like Heroku
-- Make sure the Heroku worker is enabled
-
-### Telegram commands
-
-```
-free - available for a call
-stop - mark yourself as unavailable for a call
-newcontact - [name] Add a new contact
-removecontact - [name] Remove an existing contact
-contacts - list all your contacts
-track - manually track a call if you hung out IRL
-stats - print basic stats about this bot
-help - print help screen
-```
-
-### Dependencies
-
-```
-bundle install
-```
-
-```
-bundle exec ruby worker.rb
-```
-
-### Environment variables
-
-```
-TELEGRAM_TOKEN
-DATABASE_URL
-```
