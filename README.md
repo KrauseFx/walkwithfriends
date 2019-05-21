@@ -4,7 +4,7 @@
 
 Staying in touch with close friends requires more effort when everybody lives somewhere else on the planet. Scheduling calls to catch up certainly works, but it requires time-commitment, and time zones make scheduling unnecessarily complicated.
 
-After living in NYC for a year, I ended up doing the following: If I walk somewhere for about 30 minutes, I'd text 2 friends or family members, asking if they're available for a chat. Often one of them would end up calling me. This way, no prior planning was necessary, things felt more spontaneous and I was able to use my NYC walking time, a city in which I walk 20,000 steps a day on average.
+After living in NYC for a year, I ended up doing the following: If I walk somewhere for about 30 minutes, I'd text 2 friends or family members, asking if they're available for a chat. Often one of them would end up calling me. This way, no prior planning was necessary, things felt more spontaneous and I was able to use my NYC walking time to catch up.
 
 ## The problems
 
@@ -66,4 +66,7 @@ A Telegam bot that manages the communication and revokes messages as soon as you
   <iframe width="300" height="580" src="https://www.youtube.com/embed/vanxPbuKTQQ" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 </p>
 
-Website generated using [markdown-to-html-github-style.com](https://markdown-to-html-github-style.com/).
+<br />
+
+<p style="margin-bottom: 0px;">
+  <small>Website generated using <a href="https://markdown-to-html-github-style.com/" target="_blank">markdown-to-html-github-style.com</a></small></p>
