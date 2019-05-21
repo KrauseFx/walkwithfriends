@@ -73,11 +73,16 @@ module StayInTouch
 
         minutes = message.text.match(%r{/free\_(\d*)})[1]
         to_send_out = []
+        skipped_contacts = []
 
         sorted_contacts(from_username: from_username) do |current_contact|
           if current_contact[:lastCall]
             days_since_last_call = ((Time.now - current_contact[:lastCall]) / 60.0 / 60.0 / 24.0).round
-            next if days_since_last_call < 2 # we just talked with them
+            if days_since_last_call < 2
+              # we just talked with them
+              skipped_contacts << current_contact[:telegramUser]
+              next
+            end
           end
 
           telegram_id = Database.database[:openChats].where(telegramUser: current_contact[:telegramUser])
@@ -89,6 +94,10 @@ module StayInTouch
               to_invite_chat_id: telegram_id.first[:chatId]
             }
           end
+        end
+
+        if skipped_contacts.count > 0
+          bot.api.send_message(chat_id: message.chat.id, text: "Skipped sending out messages to " + skipped_contacts.join(",") + " as talked with them within the last 24h")
         end
 
         if to_send_out.count == 0
