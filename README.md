@@ -69,4 +69,4 @@ A Telegam bot that manages the communication and revokes messages as soon as you
 <br />
 
 <p style="margin-bottom: 0px;">
-  <small>Website generated using <a href="https://markdown-to-html-github-style.com/" target="_blank">markdown-to-html-github-style.com</a></small></p>
+  <small>Website generated using <a href="https://markdown-to-github-style-web.com/" target="_blank">markdown-to-html-github-style.com</a></small></p>
