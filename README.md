@@ -15,7 +15,7 @@ After living in NYC for a year, I ended up doing the following: If I walk somewh
 
 ## The solution
 
-A Telegam bot that manages the communication for me and revokes messages as soon as I'm unavailable again. 
+A Telegam bot that manages the communication and revokes messages as soon as you're unavailable again. 
 
 <h3 style="text-align: center; font-size: 35px; border: none">
   <a href="https://t.me/WalkWithFriendsBot" target="_blank" style="text-decoration: none;">
@@ -39,6 +39,7 @@ A Telegam bot that manages the communication for me and revokes messages as soon
 
 **How does it work**:
 
+1. Say hi to the bot via [t.me/WalkWithFriendsBot](https://t.me/WalkWithFriendsBot)
 1. You add all the Telegram contacts using `/newcontact [username]`
 1. You type `/free` to mark yourself as available
 1. You tell the bot how many minutes you'll be free (this number will be sent as part of the message to your friends)
@@ -53,6 +54,7 @@ A Telegam bot that manages the communication for me and revokes messages as soon
 - It works on every major platform, including iOS, Android and macOS
 - It supports revoking of messages and notifications, even from the lock screen
 - They have a solid bots API
+- Registration for new users is easy & fast
 
 <h3 style="text-align: center; font-size: 35px; border: none">
   <a href="https://t.me/WalkWithFriendsBot" target="_blank" style="text-decoration: none;">
