@@ -433,7 +433,7 @@ module StayInTouch
         "- If a friend doesn't know about this setup, they'd think I want to discuss something specific or urgent, however those kinds of calls are just to catch up and stay in touch.",
         "- Often, either none of my friends were available, or multiple responded, so it was always a tricky balance on how many friends I'd text, with the risk of both of them replying Yep, I'm free now",
         "- If one friend is never available, you kind of \"forget\" to text them, as you already assume subconsciously that they won't be available",
-        "The solution: A Telegam bot that manages the communication for me and revokes messages as soon as I'm unavailable again."
+        "The solution: A Telegram bot that manages the communication for me and revokes messages as soon as I'm unavailable again."
       ]
       messages.each do |message|
         bot.api.send_message(chat_id: chat_id, text: message)

@@ -15,7 +15,7 @@ After living in NYC for a year, I ended up doing the following: If I walk somewh
 
 ## The solution
 
-A Telegam bot that manages the communication and revokes messages as soon as you're unavailable again. 
+A Telegram bot that manages the communication and revokes messages as soon as you're unavailable again. 
 
 <h3 style="text-align: center; font-size: 35px; border: none">
   <a href="https://t.me/WalkWithFriendsBot" target="_blank" style="text-decoration: none;">
