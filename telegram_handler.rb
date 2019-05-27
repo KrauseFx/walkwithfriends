@@ -264,7 +264,7 @@ module StayInTouch
           end
 
           if Database.database[:openChats].where(telegramUser: row[:telegramUser]).count == 0
-            formatted_days_ago = "Didn't accept invite"
+            formatted_days_ago = "Didn't accept"
             emoji = "🧶"
           end
 
