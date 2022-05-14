@@ -69,4 +69,6 @@ A Telegram bot that manages the communication and revokes messages as soon as yo
 <br />
 
 <p style="margin-bottom: 0px;">
-  <small>Website generated using <a href="https://markdown-to-github-style-web.com/" target="_blank">markdown-to-html-github-style.com</a></small></p>
+  <small>Website generated using <a href="https://krausefx.github.io/markdown-to-html-github-style/" target="_blank">markdown-to-html-github-style</a></small>
+  <small>Find the source codde on <a href="https://github.com/KrauseFx/walkwithfriends" target="_blank">GitHub KrauseFx/walkwithfriends</a></small>
+</p>
