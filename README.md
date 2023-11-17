@@ -1,7 +1,5 @@
 # WalkWithFriends
 
-[![](https://img.shields.io/badge/author-@KrauseFx-blue.svg?style=flat)](https://twitter.com/KrauseFx)
-
 Staying in touch with close friends requires more effort when everybody lives somewhere else on the planet. Scheduling calls to catch up certainly works, but it requires time-commitment, and time zones make scheduling unnecessarily complicated.
 
 After living in NYC for a year, I ended up doing the following: If I walk somewhere for about 30 minutes, I'd text 2 friends or family members, asking if they're available for a chat. Often one of them would end up calling me. This way, no prior planning was necessary, things felt more spontaneous and I was able to use my NYC walking time to catch up.
@@ -16,12 +14,6 @@ After living in NYC for a year, I ended up doing the following: If I walk somewh
 ## The solution
 
 A Telegram bot that manages the communication and revokes messages as soon as you're unavailable again. 
-
-<h3 style="text-align: center; font-size: 35px; border: none">
-  <a href="https://t.me/WalkWithFriendsBot" target="_blank" style="text-decoration: none;">
-    🔰 Start using the bot 🔰
-  </a>
-</h3>
 
 <table>
   <tr>
@@ -56,12 +48,6 @@ A Telegram bot that manages the communication and revokes messages as soon as yo
 - They have a solid bots API
 - Registration for new users is easy & fast
 
-<h3 style="text-align: center; font-size: 35px; border: none">
-  <a href="https://t.me/WalkWithFriendsBot" target="_blank" style="text-decoration: none;">
-    🔰 Start using the bot 🔰
-  </a>
-</h3>
-
 <p style="text-align: center">
   <iframe width="300" height="580" src="https://www.youtube.com/embed/vanxPbuKTQQ" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 </p>
@@ -70,5 +56,5 @@ A Telegram bot that manages the communication and revokes messages as soon as yo
 
 <p style="margin-bottom: 0px;">
   <small>Website generated using <a href="https://krausefx.github.io/markdown-to-html-github-style/" target="_blank">markdown-to-html-github-style</a></small>
-  <small>Find the source codde on <a href="https://github.com/KrauseFx/walkwithfriends" target="_blank">GitHub KrauseFx/walkwithfriends</a></small>
+  <small>Find the source code on <a href="https://github.com/KrauseFx/walkwithfriends" target="_blank">GitHub KrauseFx/walkwithfriends</a></small>
 </p>
