@@ -32,7 +32,8 @@ GEM
       method_source (~> 1.0)
     rainbow (3.1.1)
     regexp_parser (2.5.0)
-    rexml (3.2.5)
+    rexml (3.2.8)
+      strscan (>= 3.0.9)
     rubocop (0.93.1)
       parallel (~> 1.10)
       parser (>= 2.7.1.5)
@@ -47,6 +48,7 @@ GEM
     ruby-progressbar (1.11.0)
     ruby2_keywords (0.0.5)
     sequel (5.59.0)
+    strscan (3.1.0)
     telegram-bot-ruby (0.21.0)
       dry-inflector
       faraday (~> 2.0)
